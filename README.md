@@ -24,6 +24,7 @@ Then open `http://localhost:8000/`. You can generate offline from local files or
 - Optionally start with `In the age of AI...`, add fabricated statistics, excessive em dashes, corporate clichés, or dramatic declarations. Statistics are invented satire.
 - Very short word requests may omit embellishments to preserve the exact count and complete sentences. The requested opening is always retained when enabled.
 - Generate and Regenerate use the current settings. Copy and Download `.txt` use the same text shown in the output. If clipboard access is unavailable, follow the displayed manual-copy recovery.
+- Switch between dark and light modes using the header button. Dark is the default; your explicit choice is remembered locally in this browser when storage is available. If storage is blocked (including some `file://` contexts), both modes still work for the current page. Switching modes preserves your text and settings.
 
 The default is three paragraphs in the Classic AI Bro voice at Startup Founder intensity, with optional embellishments off. An initial sample appears immediately.
 
@@ -45,9 +46,9 @@ With Node.js installed, run the built-in test runner; there are no dependencies 
 node --test tests/*.test.cjs
 ```
 
-The generator suite checks all style/intensity combinations at paragraph and sentence limits, every word target from 10 through 500 for each style with the opening on and off, sentence uniqueness, complete punctuation, counters, option bounds, seeded reproducibility, and individual embellishment switches. The interface suite uses a DOM harness to check controls and actions. A harness cannot establish native browser behavior or visual layout; native browser and visual QA were unavailable in this environment. Humor and prose quality also benefit from manual review.
+The generator suite checks all style/intensity combinations at paragraph and sentence limits, every word target from 10 through 500 for each style with the opening on and off, sentence uniqueness, complete punctuation, counters, option bounds, seeded reproducibility, and individual embellishment switches. The interface suite uses a DOM harness to check controls and actions, theme restoration before interface initialization, mode switching without changing output, and unavailable browser storage. A harness cannot establish native browser behavior or visual layout; native browser and visual QA were unavailable in this environment. Humor and prose quality also benefit from manual review.
 
-For browser checks, test direct-file loading, HTTP at the root, and HTTP under `/AiBroLoremIpsum/`. To preview the project subpath, start `python3 -m http.server 8001` from the parent directory and open `http://localhost:8001/AiBroLoremIpsum/`. Check narrow and wide viewports, keyboard focus, unit bounds, Generate/Regenerate, clipboard success and denial, and downloaded text. Copied and downloaded output should match the displayed text exactly. Runtime generation should make no outbound requests.
+For browser checks, test direct-file loading, HTTP at the root, and HTTP under `/AiBroLoremIpsum/`. To preview the project subpath, start `python3 -m http.server 8001` from the parent directory and open `http://localhost:8001/AiBroLoremIpsum/`. Check narrow and wide viewports in both themes, keyboard focus, remembered theme after reload, blocked storage, unit bounds, Generate/Regenerate, clipboard success and denial, and downloaded text. Copied and downloaded output should match the displayed text exactly. Runtime generation should make no outbound requests.
 
 ## GitHub Pages
 

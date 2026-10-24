@@ -336,6 +336,33 @@
     status.textContent = message;
   }
 
+  const themeKey = 'ai-bro-ipsum-theme';
+  const themeToggle = byId('theme-toggle');
+  // The small head script restores the saved mode before styles are painted.
+  let theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+
+  function applyTheme() {
+    const isLight = theme === 'light';
+    const nextMode = isLight ? 'Dark mode' : 'Light mode';
+    document.documentElement.setAttribute('data-theme', theme);
+    themeToggle.setAttribute('aria-pressed', String(isLight));
+    themeToggle.setAttribute('aria-label', `Switch to ${nextMode.toLowerCase()}`);
+    byId('theme-label').textContent = nextMode;
+    byId('theme-color').setAttribute('content', isLight ? '#faf8f2' : '#191917');
+  }
+
+  themeToggle.addEventListener('click', () => {
+    theme = theme === 'dark' ? 'light' : 'dark';
+    applyTheme();
+    try {
+      globalThis.localStorage.setItem(themeKey, theme);
+    } catch {
+      // The selected mode still works for this page when persistence is denied.
+    }
+    announce(`${theme === 'light' ? 'Light' : 'Dark'} mode enabled.`);
+  });
+  applyTheme();
+
   function syncAmount() {
     const [minimum, maximum] = limits[unit.value] || limits.paragraphs;
     amount.min = String(minimum);

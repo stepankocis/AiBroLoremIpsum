@@ -9,11 +9,12 @@ const path = require('node:path');
 const vm = require('node:vm');
 const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
 
-function mount({ clipboard, legacyCopy = false, secure = false } = {}) {
+function mount({ clipboard, legacyCopy = false, secure = false, savedTheme, storageUnavailable = false, storageWriteDenied = false } = {}) {
   const nodes = new Map();
   const downloads = [];
   const blobs = new Map();
   const timers = [];
+  const stored = new Map(savedTheme === undefined ? [] : [['ai-bro-ipsum-theme', savedTheme]]);
   let selection;
   let legacyText;
   let document;
@@ -57,6 +58,7 @@ function mount({ clipboard, legacyCopy = false, secure = false } = {}) {
     nodes.get(match[1]).value = /value="([^"]*)"/u.exec(selected[1])[1];
   }
   document = {
+    documentElement: new Element('html', { 'data-theme': 'dark' }),
     body: new Element('body'),
     activeElement: null,
     getElementById: (id) => nodes.get(id),
@@ -77,12 +79,79 @@ function mount({ clipboard, legacyCopy = false, secure = false } = {}) {
     setTimeout: (callback) => timers.push(callback),
     console,
   });
+  Object.defineProperty(context, 'localStorage', {
+    get() {
+      if (storageUnavailable) throw new Error('Storage unavailable');
+      return {
+        getItem: (key) => stored.get(key) ?? null,
+        setItem: (key, value) => {
+          if (storageWriteDenied) throw new Error('Storage write denied');
+          stored.set(key, value);
+        },
+      };
+    },
+  });
+  // Run the shipped head bootstrap, so its storage handling and pre-paint mode
+  // restoration are covered independently of the deferred interface script.
+  for (const match of html.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/giu)) {
+    vm.runInContext(match[1], context);
+  }
+  const initialTheme = document.documentElement.getAttribute('data-theme');
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../script.js'), 'utf8'), context);
-  return { nodes, context, downloads, blobs, timers, get selection() { return selection; }, get legacyText() { return legacyText; } };
+  return { nodes, context, downloads, blobs, timers, stored, initialTheme, get selection() { return selection; }, get legacyText() { return legacyText; } };
 }
 
+test('theme starts dark and restores valid saved preferences before interface initialization', () => {
+  for (const [savedTheme, expected] of [[undefined, 'dark'], ['light', 'light'], ['dark', 'dark'], ['unexpected', 'dark']]) {
+    const { nodes, context, initialTheme } = mount({ savedTheme });
+    assert.equal(initialTheme, expected);
+    assert.equal(context.document.documentElement.getAttribute('data-theme'), expected);
+    assert.equal(nodes.get('theme-toggle').getAttribute('aria-pressed'), String(expected === 'light'));
+    assert.equal(nodes.get('theme-label').textContent, expected === 'light' ? 'Dark mode' : 'Light mode');
+    assert.equal(nodes.get('theme-color').getAttribute('content'), expected === 'light' ? '#faf8f2' : '#191917');
+  }
+});
+
+test('theme toggle persists both modes and preserves output, counters, and edited settings', async () => {
+  const { nodes, context, stored } = mount();
+  nodes.get('amount').value = '17';
+  nodes.get('style').value = 'doomer';
+  nodes.get('statistics').checked = true;
+  const output = nodes.get('output').textContent;
+  const words = nodes.get('word-count').textContent;
+  const characters = nodes.get('character-count').textContent;
+  for (const theme of ['light', 'dark']) {
+    await nodes.get('theme-toggle').dispatch('click');
+    assert.equal(context.document.documentElement.getAttribute('data-theme'), theme);
+    assert.equal(stored.get('ai-bro-ipsum-theme'), theme);
+    assert.equal(nodes.get('theme-toggle').getAttribute('aria-label'), `Switch to ${theme === 'light' ? 'dark' : 'light'} mode`);
+    assert.equal(nodes.get('theme-toggle').getAttribute('aria-pressed'), String(theme === 'light'));
+    assert.equal(nodes.get('theme-label').textContent, theme === 'light' ? 'Dark mode' : 'Light mode');
+    assert.equal(nodes.get('theme-color').getAttribute('content'), theme === 'light' ? '#faf8f2' : '#191917');
+    assert.equal(nodes.get('status').textContent, `${theme === 'light' ? 'Light' : 'Dark'} mode enabled.`);
+    assert.equal(nodes.get('output').textContent, output);
+    assert.equal(nodes.get('word-count').textContent, words);
+    assert.equal(nodes.get('character-count').textContent, characters);
+    assert.equal(nodes.get('amount').value, '17');
+    assert.equal(nodes.get('style').value, 'doomer');
+    assert.equal(nodes.get('statistics').checked, true);
+  }
+});
+
+test('unavailable storage and denied writes do not prevent theme changes or generation', async () => {
+  for (const options of [{ storageUnavailable: true }, { storageWriteDenied: true }]) {
+    const { nodes, context, initialTheme } = mount(options);
+    assert.equal(initialTheme, 'dark');
+    await nodes.get('theme-toggle').dispatch('click');
+    assert.equal(context.document.documentElement.getAttribute('data-theme'), 'light');
+    await nodes.get('regenerate').dispatch('click');
+    assert.ok(nodes.get('output').textContent.length > 0);
+    assert.match(nodes.get('status').textContent, /Generated/u);
+  }
+});
+
 test('static document uses local assets and supplies all accessible controls', () => {
-  const ids = ['generator-form', 'amount', 'unit', 'amount-hint', 'intensity', 'intensity-label', 'intensity-description', 'style', 'startWithAI', 'statistics', 'emDashes', 'cliches', 'declarations', 'output', 'word-count', 'character-count', 'status', 'regenerate', 'copy', 'download', 'easter-egg', 'easter-message'];
+  const ids = ['theme-toggle', 'theme-label', 'theme-color', 'generator-form', 'amount', 'unit', 'amount-hint', 'intensity', 'intensity-label', 'intensity-description', 'style', 'startWithAI', 'statistics', 'emDashes', 'cliches', 'declarations', 'output', 'word-count', 'character-count', 'status', 'regenerate', 'copy', 'download', 'easter-egg', 'easter-message'];
   const { nodes } = mount();
   for (const id of ids) assert.ok(nodes.has(id), id);
   assert.match(html, /href="\.\/style\.css"/u);
