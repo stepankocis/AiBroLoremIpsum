@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#111210">
+    <meta name="description" content="Premium-sounding AI nonsense. Generate free, entirely local placeholder text for your next world-changing deck.">
+    <title>AI Bro Ipsum</title>
+    <link rel="stylesheet" href="./style.css">
+    <script src="./script.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#generator-form">Skip to generator</a>
+    <div class="site-shell">
+      <header class="site-header">
+        <a class="brand" href="./index.html" aria-label="AI Bro Ipsum home"><span class="brand-icon" aria-hidden="true">ai<span>✳</span></span><span>AI BRO IPSUM<span class="brand-period">.</span></span></a>
+        <span class="header-note"><span class="status-dot" aria-hidden="true"></span> 100% artificial. 0% intelligence.</span>
+      </header>
+      <main>
+        <section class="hero" aria-labelledby="page-title">
+          <p class="eyebrow"><span aria-hidden="true">✳</span> THE FUTURE OF SAYING NOTHING</p>
+          <h1 id="page-title">AI Bro <span>Ipsum</span><span class="title-dot" aria-hidden="true">.</span></h1>
+          <p class="subtitle">Why use meaningless Latin when you can use meaningless AI jargon?</p>
+          <p class="hero-note">Big ideas. Zero substance. Perfect placeholder text.</p>
+        </section>
+        <div class="generator-layout">
+          <aside class="control-panel" aria-labelledby="controls-title">
+            <div class="panel-heading">
+              <h2 id="controls-title">Configure the hype</h2>
+              <span class="small-index" aria-hidden="true">01 / INPUT</span>
+            </div>
+            <form id="generator-form" tabindex="-1">
+              <fieldset class="control-section amount-section">
+                <legend>How much nothing?</legend>
+                <div class="amount-row">
+                  <div>
+                    <label class="sr-only" for="amount">Amount</label>
+                    <input id="amount" name="amount" type="number" min="1" max="20" value="3" step="1" required aria-describedby="amount-hint">
+                  </div>
+                  <div>
+                    <label class="sr-only" for="unit">Output unit</label>
+                    <select id="unit" name="unit">
+                      <option value="paragraphs">Paragraphs</option>
+                      <option value="sentences">Sentences</option>
+                      <option value="words">Words</option>
+                    </select>
+                  </div>
+                </div>
+                <p class="field-help" id="amount-hint">Between 1 and 20 paragraphs. Say less. Or more.</p>
+              </fieldset>
+              <fieldset class="control-section intensity-section">
+                <legend>AI bro intensity</legend>
+                <div class="intensity-heading">
+                  <span id="intensity-label">Startup Founder</span>
+                  <span class="level-badge" aria-hidden="true">HYPE LEVEL</span>
+                </div>
+                <label class="sr-only" for="intensity">AI bro intensity, from Intern to Singularity</label>
+                <input id="intensity" name="intensity" type="range" min="1" max="5" step="1" value="2" aria-describedby="intensity-description intensity-options" list="intensity-ticks">
+                <datalist id="intensity-ticks">
+                  <option value="1" label="Intern"></option>
+                  <option value="2" label="Startup Founder"></option>
+                  <option value="3" label="LinkedIn Thought Leader"></option>
+                  <option value="4" label="AGI Evangelist"></option>
+                  <option value="5" label="Singularity"></option>
+                </datalist>
+                <div class="range-labels" aria-hidden="true">
+                  <span>Almost human</span>
+                  <span>Fully unhinged</span>
+                </div>
+                <p class="field-help" id="intensity-description">Mildly insufferable.</p>
+                <details class="intensity-guide">
+                  <summary>The five stages of hype</summary>
+                  <ol id="intensity-options">
+                    <li>
+                      Intern
+                      <span>Almost coherent</span>
+                    </li>
+                    <li>
+                      Startup Founder
+                      <span>Mildly insufferable</span>
+                    </li>
+                    <li>
+                      LinkedIn Thought Leader
+                      <span>Maximum engagement bait</span>
+                    </li>
+                    <li>
+                      AGI Evangelist
+                      <span>Completely detached from reality</span>
+                    </li>
+                    <li>
+                      Singularity
+                      <span>Beyond human comprehension</span>
+                    </li>
+                  </ol>
+                </details>
+              </fieldset>
+              <div class="control-section style-section">
+                <label for="style">Choose your persona</label>
+                <select id="style" name="style">
+                  <option value="classic">Classic AI Bro</option>
+                  <option value="linkedin">LinkedIn Influencer</option>
+                  <option value="vc">VC Pitch Deck</option>
+                  <option value="founder">Startup Founder</option>
+                  <option value="research">AI Research Paper</option>
+                  <option value="keynote">Tech Conference Keynote</option>
+                  <option value="doomer">AGI Doomer</option>
+                  <option value="vibe">Vibe Coding Evangelist</option>
+                </select>
+              </div>
+              <fieldset class="control-section extras-section">
+                <legend>Unnecessary enhancements</legend>
+                <label class="check-row"><input id="startWithAI" name="startWithAI" type="checkbox"><span>Start with “In the age of AI...”</span></label>
+                <label class="check-row"><input id="statistics" name="statistics" type="checkbox"><span>Statistically dubious statistics</span></label>
+                <label class="check-row"><input id="emDashes" name="emDashes" type="checkbox"><span>Excessive em dashes</span></label>
+                <label class="check-row"><input id="cliches" name="cliches" type="checkbox"><span>Corporate clichés</span></label>
+                <label class="check-row"><input id="declarations" name="declarations" type="checkbox"><span>Dramatic declarations</span></label>
+                <p class="field-help extras-note">Tiny word budgets may skip extras. Even hype has limits.</p>
+              </fieldset>
+              <button class="generate-button" type="submit">
+                <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m12 3 2.3 6.7L21 12l-6.7 2.3L12 21l-2.3-6.7L3 12l6.7-2.3L12 3Z"></path></svg>
+                Generate the future
+                <span aria-hidden="true">↗</span>
+              </button>
+              <p class="generate-note">No prompt engineering required.</p>
+            </form>
+          </aside>
+          <section class="output-panel" aria-labelledby="output-title">
+            <div class="output-toolbar">
+              <div class="output-heading">
+                <span class="status-dot" aria-hidden="true"></span>
+                <h2 id="output-title">Your next big nothing</h2>
+              </div>
+              <span class="small-index" aria-hidden="true">02 / OUTPUT</span>
+            </div>
+            <div class="output-body">
+              <div class="output-kicker">
+                <span>ARTIFICIALLY INFLATED PROSE</span>
+                <span aria-hidden="true">✳</span>
+              </div>
+              <div id="output" class="generated-text" role="region" tabindex="0" aria-label="Generated placeholder text"></div>
+              <noscript>Enable JavaScript to generate text locally in your browser. No account or network connection is needed.</noscript>
+            </div>
+            <div class="output-bottom">
+              <div class="output-stats">
+                <span><strong id="word-count">0</strong> words</span>
+                <span class="stat-divider" aria-hidden="true">/</span>
+                <span><strong id="character-count">0</strong> characters</span>
+              </div>
+              <div class="output-actions">
+                <button id="regenerate" type="button" class="icon-button" title="Regenerate text">
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"></path><path d="M6.1 6.1A8 8 0 0 1 19.5 10M4.5 14A8 8 0 0 0 18 18"></path></svg>
+                  <span>Regenerate</span>
+                </button>
+                <button id="download" type="button" aria-label="Download .txt" class="icon-button" title="Download as a text file">
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"></path></svg>
+                  <span>.txt</span>
+                </button>
+                <button id="copy" type="button" class="copy-button">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"></rect><path d="M16 8V3H3v13h5"></path></svg>
+                  Copy text
+                </button>
+              </div>
+            </div>
+            <div id="status" class="status-message" role="status" aria-live="polite" aria-atomic="true"></div>
+          </section>
+        </div>
+        <div class="trust-strip">
+          <span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m12 3 8 4v5c0 5-8 9-8 9s-8-4-8-9V7l8-4Z"></path><path d="m8 12 3 3 5-6"></path></svg> Runs locally. Your nonsense stays yours.</span>
+          <span>Powered by absolutely no neural networks.</span>
+        </div>
+      </main>
+      <footer class="site-footer">
+        <p>No GPUs were harmed in the making of this paragraph.</p>
+        <div class="footer-easter">
+          <button id="easter-egg" type="button" aria-expanded="false" aria-controls="easter-message">
+            Our moat
+            <span aria-hidden="true">↗</span>
+          </button>
+          <p id="easter-message" hidden>Our moat is that none of this means anything. Please don't tell the investors.</p>
+        </div>
+        <span class="footer-tag">PRE-REVENUE. POST-MEANING.</span>
+      </footer>
+    </div>
+  </body>
+</html>
