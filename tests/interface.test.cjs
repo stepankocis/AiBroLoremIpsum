@@ -9,12 +9,14 @@ const path = require('node:path');
 const vm = require('node:vm');
 const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
 
-function mount({ clipboard, legacyCopy = false, secure = false, savedTheme, storageUnavailable = false, storageWriteDenied = false } = {}) {
+function mount({ clipboard, legacyCopy = false, secure = false, savedTheme, savedLanguage, storageUnavailable = false, storageWriteDenied = false } = {}) {
   const nodes = new Map();
+  const elements = [];
   const downloads = [];
   const blobs = new Map();
   const timers = [];
   const stored = new Map(savedTheme === undefined ? [] : [['ai-bro-ipsum-theme', savedTheme]]);
+  if (savedLanguage !== undefined) stored.set('ai-bro-ipsum-language', savedLanguage);
   let selection;
   let legacyText;
   let document;
@@ -33,6 +35,8 @@ function mount({ clipboard, legacyCopy = false, secure = false, savedTheme, stor
     }
     setAttribute(name, value) { this.attributes[name] = String(value); }
     getAttribute(name) { return this.attributes[name]; }
+    get lang() { return this.getAttribute('lang'); }
+    set lang(value) { this.setAttribute('lang', value); }
     addEventListener(type, callback) { (this.listeners[type] ||= []).push(callback); }
     async dispatch(type) {
       for (const callback of this.listeners[type] || []) await callback({ preventDefault() {} });
@@ -48,9 +52,11 @@ function mount({ clipboard, legacyCopy = false, secure = false, savedTheme, stor
 
   for (const match of html.matchAll(/<([a-z][\w-]*)\b([^>]*)>/giu)) {
     const attributes = Object.fromEntries(Array.from(match[2].matchAll(/([\w-]+)(?:="([^"]*)")?/gu), (item) => [item[1], item[2] || '']));
+    const element = new Element(match[1], attributes);
+    elements.push(element);
     if (!attributes.id) continue;
     assert.ok(!nodes.has(attributes.id), `duplicate HTML id: ${attributes.id}`);
-    nodes.set(attributes.id, new Element(match[1], attributes));
+    nodes.set(attributes.id, element);
   }
   for (const match of html.matchAll(/<select\b[^>]*id="([^"]+)"[^>]*>([\s\S]*?)<\/select>/giu)) {
     const options = Array.from(match[2].matchAll(/<option\b([^>]*)>/giu));
@@ -58,7 +64,12 @@ function mount({ clipboard, legacyCopy = false, secure = false, savedTheme, stor
     nodes.get(match[1]).value = /value="([^"]*)"/u.exec(selected[1])[1];
   }
   document = {
-    documentElement: new Element('html', { 'data-theme': 'dark' }),
+    documentElement: new Element('html', { 'data-theme': 'dark', lang: 'en' }),
+    querySelectorAll: (selector) => {
+      const attribute = /^\[([\w-]+)\]$/u.exec(selector);
+      assert.ok(attribute, `unsupported fixture selector: ${selector}`);
+      return elements.filter((element) => Object.hasOwn(element.attributes, attribute[1]));
+    },
     body: new Element('body'),
     activeElement: null,
     getElementById: (id) => nodes.get(id),
@@ -98,7 +109,7 @@ function mount({ clipboard, legacyCopy = false, secure = false, savedTheme, stor
   }
   const initialTheme = document.documentElement.getAttribute('data-theme');
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../script.js'), 'utf8'), context);
-  return { nodes, context, downloads, blobs, timers, stored, initialTheme, get selection() { return selection; }, get legacyText() { return legacyText; } };
+  return { nodes, elements, context, downloads, blobs, timers, stored, initialTheme, get selection() { return selection; }, get legacyText() { return legacyText; } };
 }
 
 test('theme starts dark and restores valid saved preferences before interface initialization', () => {
@@ -233,4 +244,112 @@ test('accessible Easter egg toggles its message and expanded state', async () =>
   await nodes.get('easter-egg').dispatch('click');
   assert.equal(nodes.get('easter-message').hidden, true);
   assert.equal(nodes.get('easter-egg').getAttribute('aria-expanded'), 'false');
+});
+
+test('language defaults to English, restores Czech, and rejects unknown preferences', () => {
+  for (const [savedLanguage, expected] of [[undefined, 'en'], ['cs', 'cs'], ['en', 'en'], ['unknown', 'en']]) {
+    const { nodes, context } = mount({ savedLanguage });
+    assert.equal(nodes.get('language').value, expected);
+    assert.equal(context.document.documentElement.lang, expected);
+    assert.equal(nodes.get('output').lang, expected);
+    assert.ok(nodes.get('output').textContent.length > 0);
+    assert.match(nodes.get('status').textContent, expected === 'cs' ? /Vygenerov/iu : /Generated/u);
+  }
+});
+
+test('live language switching translates labels and applies current settings while preserving theme', async () => {
+  const { nodes, elements, context, stored } = mount({ savedTheme: 'light' });
+  const translatedNodes = elements.filter((element) => element.getAttribute('data-i18n'));
+  assert.ok(translatedNodes.length >= 30, 'localization must cover labels, options and explanatory copy');
+  const englishLabels = new Map(translatedNodes.map((element) => [element, element.textContent]));
+  const translatedAttributes = ['aria-label', 'title', 'label', 'content'].flatMap((attribute) =>
+    elements.filter((element) => element.getAttribute(`data-i18n-${attribute}`)).map((element) => ({ element, attribute, english: element.getAttribute(attribute) })));
+  assert.ok(translatedAttributes.length >= 5, 'accessible names must be localized too');
+  nodes.get('unit').value = 'words';
+  nodes.get('amount').value = '37';
+  nodes.get('style').value = 'research';
+  nodes.get('intensity').value = '4';
+  nodes.get('startWithAI').checked = true;
+  nodes.get('statistics').checked = true;
+  nodes.get('language').value = 'cs';
+  await nodes.get('language').dispatch('change');
+  assert.equal(stored.get('ai-bro-ipsum-language'), 'cs');
+  assert.equal(context.document.documentElement.lang, 'cs');
+  assert.equal(nodes.get('output').lang, 'cs');
+  assert.equal(context.document.documentElement.getAttribute('data-theme'), 'light');
+  assert.equal(nodes.get('amount').value, '37');
+  assert.equal(nodes.get('style').value, 'research');
+  assert.equal(nodes.get('intensity').value, '4');
+  assert.equal(nodes.get('statistics').checked, true);
+  assert.match(nodes.get('output').textContent, /^V éře umělé inteligence\.\.\./u);
+  assert.equal(context.AIBroIpsum.countWords(nodes.get('output').textContent), 37);
+  assert.equal(nodes.get('word-count').textContent, '37');
+  assert.match(nodes.get('amount-hint').textContent, /10–500/u);
+  assert.doesNotMatch(nodes.get('amount-hint').textContent, /Choose|words/u);
+  assert.doesNotMatch(nodes.get('intensity-label').textContent, /AGI Evangelist/u);
+  assert.doesNotMatch(nodes.get('intensity-description').textContent, /detached from reality/u);
+  for (const { element, attribute, english } of translatedAttributes) {
+    assert.ok(element.getAttribute(attribute));
+    assert.notEqual(element.getAttribute(attribute), english);
+  }
+  const changed = translatedNodes.filter((element) => element.textContent !== englishLabels.get(element));
+  assert.ok(changed.length >= 30, 'Czech must translate the whole interface');
+  for (const element of translatedNodes) {
+    assert.ok(element.textContent.trim(), `empty translated text: ${element.getAttribute('data-i18n')}`);
+    assert.doesNotMatch(element.textContent, /undefined|\[object Object\]/u);
+  }
+  const previous = nodes.get('output').textContent;
+  await nodes.get('regenerate').dispatch('click');
+  assert.notEqual(nodes.get('output').textContent, previous);
+  assert.equal(context.AIBroIpsum.countWords(nodes.get('output').textContent), 37);
+  assert.match(nodes.get('status').textContent, /Vygenerov/iu);
+  await nodes.get('theme-toggle').dispatch('click');
+  assert.doesNotMatch(nodes.get('status').textContent, /mode enabled/u);
+  assert.doesNotMatch(nodes.get('theme-label').textContent, /mode/u);
+  nodes.get('language').value = 'en';
+  await nodes.get('language').dispatch('change');
+  assert.equal(context.document.documentElement.lang, 'en');
+  assert.equal(nodes.get('output').lang, 'en');
+  assert.match(nodes.get('output').textContent, /^In the age of AI\.\.\./u);
+  assert.match(nodes.get('status').textContent, /Generated/u);
+  for (const element of translatedNodes) {
+    if (element === nodes.get('intensity-label') || element === nodes.get('intensity-description')) continue;
+    assert.equal(element.textContent, englishLabels.get(element));
+  }
+  assert.equal(nodes.get('intensity-label').textContent, 'AGI Evangelist');
+});
+
+test('Czech remains usable when language preference storage cannot be read or written', async () => {
+  for (const options of [{ storageUnavailable: true }, { storageWriteDenied: true }]) {
+    const { nodes, context } = mount(options);
+    nodes.get('language').value = 'cs';
+    await nodes.get('language').dispatch('change');
+    assert.equal(context.document.documentElement.lang, 'cs');
+    await nodes.get('generator-form').dispatch('submit');
+    assert.match(nodes.get('status').textContent, /Vygenerov/iu);
+  }
+});
+
+test('Czech copy and download retain canonical UTF-8 text and localized confirmations', async () => {
+  let copied;
+  const { nodes, downloads, blobs, timers } = mount({ savedLanguage: 'cs', secure: true, clipboard: { writeText: async (text) => { copied = text; } } });
+  await nodes.get('copy').dispatch('click');
+  assert.equal(copied, nodes.get('output').textContent);
+  assert.match(nodes.get('status').textContent, /schrán/iu);
+  assert.doesNotMatch(nodes.get('status').textContent, /Copied/u);
+  await nodes.get('download').dispatch('click');
+  const blob = blobs.get(downloads[0].href);
+  assert.equal(blob.type, 'text/plain;charset=utf-8');
+  assert.equal(await blob.text(), copied);
+  assert.doesNotMatch(nodes.get('status').textContent, /Downloaded/u);
+  for (const callback of timers) callback();
+  assert.equal(blobs.size, 0);
+});
+
+test('Czech clipboard denial provides localized manual recovery without claiming success', async () => {
+  const page = mount({ savedLanguage: 'cs', secure: true, clipboard: { writeText: async () => { throw new Error('Denied'); } } });
+  await page.nodes.get('copy').dispatch('click');
+  assert.equal(page.selection, page.nodes.get('output'));
+  assert.match(page.nodes.get('status').textContent, /Ctrl\+C/u);
+  assert.doesNotMatch(page.nodes.get('status').textContent, /Clipboard access|Text selected|Copied|Zkopírováno/u);
 });

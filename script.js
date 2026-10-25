@@ -64,7 +64,7 @@
     const numeric = Number(o.amount);
     const amount = Number.isFinite(numeric) ? Math.min(limits[1], Math.max(limits[0], Math.round(numeric))) : (unit === 'words' ? 100 : 3);
     const level = Number(o.intensity);
-    return { unit, amount, intensity: Number.isFinite(level) ? Math.min(5, Math.max(1, Math.round(level))) : 2,
+    return { language: o.language === 'cs' ? 'cs' : 'en', unit, amount, intensity: Number.isFinite(level) ? Math.min(5, Math.max(1, Math.round(level))) : 2,
       style: styles.some(s => s.value === o.style) ? o.style : 'classic', startWithAI: o.startWithAI === true,
       statistics: o.statistics === true, emDashes: o.emDashes === true, cliches: o.cliches === true, declarations: o.declarations === true };
   }
@@ -82,7 +82,10 @@
       recent.set(bank, [...last.slice(-Math.min(3, bank.length - 2)), index]);
       return bank[index];
     }
-    return { o, pick, s: () => pick(vocabulary.subjects), v: () => pick(vocabulary.verbs), obj: () => pick(vocabulary.objects),
+    const cs = Object.fromEntries(Object.entries({ s: 'subjects', v: 'verbs', obj: 'objects', ctx: 'contexts', concern: 'concerns', art: 'artifacts', out: 'outcomes', tech: 'tech' }).map(([name, bank]) => [name, () => pick(czech[bank])]));
+    cs.idea = () => pick(czech.ideas[o.intensity - 1]);
+    cs.voice = () => pick(czech.voices[o.style]);
+    return { o, pick, cs, s: () => pick(vocabulary.subjects), v: () => pick(vocabulary.verbs), obj: () => pick(vocabulary.objects),
       q: () => pick(vocabulary.qualities), aq: () => { const word = pick(vocabulary.qualities); return (/^[aeiou]/i.test(word) ? 'an ' : 'a ') + word; }, ctx: () => pick(vocabulary.contexts), out: () => pick(vocabulary.outcomes),
       art: () => pick(vocabulary.artifacts), who: () => pick(vocabulary.people), concern: () => pick(vocabulary.concerns),
       pivot: () => pick(vocabulary.pivots), tech: () => pick(vocabulary.technologies),
@@ -168,7 +171,162 @@
       c => `the compiler requested a type, so I asked ${c.idea()} to manifest a more supportive error message`
     ]
   };
-  const opening = 'In the age of AI...';
+  // Czech constituents carry the case required by their templates. Neuter ideas
+  // have identical nominative and accusative forms; objects are accusative.
+  const czech = {
+    subjects: split('náš model|interní chatbot|firemní dashboard|jazykový agent|nový algoritmus|virtuální asistent|investiční výbor|produktový tým|marketingový odbor|poradní orgán|vývojový tým|škálovací modul|predikční systém|firemní inkubátor|pilotní projekt|autonomní orchestrátor|syntetický analytik|digitální poradce|strategický partner|unavený zakladatel'),
+    verbs: split('optimalizuje|přepisuje|automatizuje|přehodnocuje|monetizuje|škáluje|zpochybňuje|urychluje|zjednodušuje|simuluje|recykluje|prodává|nahrazuje|předpovídá|testuje|integruje|transformuje|sjednocuje|zachraňuje|prezentuje'),
+    objects: split('firemní strategii|zákaznickou podporu|lidský úsudek|interní komunikaci|zápis z porady|pracovní morálku|návratnost investice|důvěru vedení|technický dluh|náborový proces|produktovou vizi|celý dodavatelský řetězec|schvalování faktur|kolektivní paměť|plán na příští kvartál|budoucnost práce|pravidla slušného chování|rozpočet na inovace|uživatelskou zpětnou vazbu|smysl našeho podnikání'),
+    contexts: split('bez zbytečných otázek|pod dohledem marketingu|během obědové pauzy|v mezích prezentace|za zavřenými dveřmi|před zraky investorů|na náklady zákazníka|s minimem dokumentace|ještě před ranní poradou|za příplatek k licenci|při každém obnovení stránky|podle posledního zadání|na základě pocitu|v souladu s náladou trhu|během plánované odstávky|při vypnutém monitoringu|bez účasti uživatelů|na přání dozorčí rady|s podporou tří konzultantů|v rámci nekonečného pilotu'),
+    concerns: split('technický dluh|chybějící dokumentaci|rostoucí náklady|odpor zaměstnanců|prázdnou pokladnu|nedostatek dat|ztrátu důvěry|bezpečnostní mezeru|únavu uživatelů|nefunkční přihlášení|závislost na dodavateli|pomalu rostoucí tržby|mizernou dostupnost|nevysvětlené chyby|nejasnou odpovědnost|zastaralé rozhraní|chybějící testy|obavy auditorů|propad zájmu|nejistou budoucnost'),
+    artifacts: split('zápis z poslední porady|tabulku s náklady|přílohu ke smlouvě|seznam známých chyb|původní zadání|přepis zákaznického rozhovoru|výsledek bezpečnostního auditu|dokumentaci k prototypu|nepřečtený průzkum trhu|výkaz odpracovaných hodin|zprávu z produkce|seznam výjimek|rozpočet na další rok|licenční podmínky|záznam posledního incidentu|protokol o testování|záložní plán|původní cenovou nabídku|důvodovou zprávu|poslední varování správce'),
+    outcomes: split('vyšší marži|rychlejší růst|novou kategorii trhu|lepší náladu investorů|úsporu jednoho kliknutí|další kolo financování|větší prostor pro inovace|kratší pracovní týden|delší seznam funkcí|silnější osobní značku|levnější provoz|srozumitelnější prezentaci|nový zdroj příjmů|klidnější dozorčí radu|bezchybný první dojem|rychlejší cestu na trh|neomezenou škálovatelnost|zasloužený potlesk|další mediální výstup|pocit technologického náskoku'),
+    tech: split('strojové učení|generativní modely|vektorové databáze|syntetická data|neuronové sítě|agentní orchestraci|automatické vyhodnocování|kontextová okna|otevřené váhy|lokální inferenci|suverénní umělou inteligenci|posilované učení|multimodální rozhraní|destilované modely|řetězení promptů|sémantickou mezipaměť|protokol MCP|architekturu RAG|prediktivní analytiku|rekurzivní sebezdokonalování'),
+    cliches: split('posunout hranice možného|vystoupit z komfortní zóny|táhnout za jeden provaz|myslet mimo zaběhnuté koleje|hledat společné synergie|proměnit výzvy v příležitosti|dostat projekt na další úroveň|sladit očekávání všech stran|stavět letadlo za letu|uchopit nízko visící ovoce|dát věcem nový rozměr|jít zákazníkovi naproti|otevřít dveře inovacím|nastavit zrcadlo trhu|vytěžit maximum z minima|podívat se na věc komplexně|propojit jednotlivé světy|neztratit tah na branku|udělat z nevýhody výhodu|vrátit se k tomu později'),
+    shortNouns: split('modely|systémy|prompty|projekty|algoritmy|rozpočty|prototypy|dashboardy|workshopy|benchmarky|procesy|produkty|servery|výstupy|reporty|piloty|moduly|kontrakty|sprinty|exporty'),
+    shortObjects: split('růst|úspěch|pokrok|zisk|důvěru|výkon|klid|úspory|nadšení|dosah|rozvoj|chaos|provoz|obrat|smysl|vliv|záměr|kapitál|náskok|budoucnost'),
+    qualities: [
+      split('užitečné|praktické|běžné|skromné|přehledné'),
+      split('škálovatelné|ziskové|průlomové|proprietární|ambiciózní'),
+      split('vizionářské|autentické|inspirativní|nepřehlédnutelné|revoluční'),
+      split('autonomní|superinteligentní|suverénní|posthumánní|vševědoucí'),
+      split('hyperdimenzionální|postkauzální|kosmické|všudypřítomné|transcendentní')
+    ],
+    ideas: [
+      split('praktické rozhraní|přehledné shrnutí dokumentů|rozumné zjednodušení práce|spolehlivé vyhledávání|automatické třídění pošty|užitečné doporučení|pohodlnější zadávání dat|srozumitelné hlášení chyb|drobné zlepšení procesu|rychlejší schvalování dovolené'),
+      split('agentní řízení růstu|proprietární zpracování kontextu|vertikální tržiště inteligence|automatizované získávání zákazníků|škálovatelné generování příjmů|syntetické zásobování daty|modulární centrum inovací|prémiové rozhraní budoucnosti|bezkonkurenční propojení služeb|nepřetržité násobení hodnoty'),
+      split('autentické vůdcovství nové generace|exponenciální budování osobní značky|asymetrické získávání pozornosti|radikální sdílení vlastní zranitelnosti|vizionářské přerámování neúspěchu|škálovatelné hledání sebe sama|inspirativní zpeněžení ranní rutiny|revoluční řízení dojmu|neomezené šíření profesní moudrosti|odvážné narušování zaběhnutých příběhů'),
+      split('suverénní jádro obecné inteligence|planetární tržiště autonomních agentů|rekurzivní přeprogramování civilizace|posthumánní řízení ekonomiky|sebezdokonalující vědomí podniku|univerzální rozhraní superinteligence|autonomní vyjednávání s realitou|globální sdílení strojového úsudku|nekonečné škálování lidského potenciálu|neuronové sjednocení všech trhů'),
+      split('kvantové přecenění smyslu existence|hyperdimenzionální účetnictví osudu|postkauzální předplatné budoucnosti|kosmické řízení kolektivního vědomí|rekurzivní zpeněžení samotného času|vševědoucí oddělení nákupu reality|transcendentní škálování prázdnoty|samofinancující zhroucení kontextového okna|ontologické pojištění podnikatelského záměru|mezihvězdné přerozdělování zakladatelské energie')
+    ],
+    voices: {
+      classic: split('podnikovou adopci|platformovou strategii|provozní efektivitu|agentní infrastrukturu|digitální transformaci|integrační plán|firemní architekturu|licenční politiku'),
+      linkedin: split('osobní růst|autentické vedení|svou profesní cestu|ranní rutinu|veřejnou zranitelnost|vlastní značku|sílu komunity|úspěch druhých'),
+      vc: split('velikost trhu|kapitálovou efektivitu|síťové efekty|konkurenční příkop|návratnost portfolia|distribuční výhodu|vstupní valuaci|další investiční kolo'),
+      founder: split('potřeby zákazníků|režim zakladatele|rychlost utrácení|další sprint|shodu produktu s trhem|první platící klienty|délku finanční rezervy|novou produktovou vizi'),
+      research: split('navrženou metodu|referenční model|evaluační protokol|ablační studii|testovací sadu|latentní reprezentaci|trénovací cíl|doplňující materiál'),
+      keynote: split('novou éru výpočetní techniky|společnou budoucnost|sílu představivosti|historický okamžik|příští generaci|cestu k inovacím|živou demonstraci|digitální obzor'),
+      doomer: split('instrumentální konvergenci|existenční riziko|sladění cílů|rekurzivní sebezdokonalování|problém kontroly|práh nasazení|poslední bezpečný bod|varovné signály'),
+      vibe: split('historii promptů|terminál agenta|záhadnou závislost|nasazení do produkce|chybějící testy|vygenerovaný kód|dobrou náladu v týmu|náhledové prostředí')
+    }
+  };
+  const czechTemplates = {
+    classic: [
+      c => `naše platforma propojuje ${c.cs.tech()} a ${c.cs.voice()}, dokud se nikdo nezeptá na cenu integrace`,
+      c => `${c.cs.s()} ${c.cs.v()} ${c.cs.obj()} ${c.cs.ctx()}`,
+      c => `nabízíme ${c.cs.idea()}, zatímco implementační tým hledá heslo do sdílené tabulky`,
+      c => `strategicky řešíme ${c.cs.concern()} tím, že nakoupíme ${c.cs.idea()}`,
+      c => `slibujeme ${c.cs.out()}, pokud zákazník nebude požadovat ${c.cs.art()}`,
+      c => `podporujeme ${c.cs.voice()} prostřednictvím další porady, na které představíme ${c.cs.idea()}`
+    ],
+    linkedin: [
+      c => `dříve jsem řešil ${c.cs.concern()}, dnes raději sdílím ${c.cs.idea()} a sleduji dosah`,
+      c => `včera jsem pochopil ${c.cs.voice()}, když můj příspěvek okomentovala vlastní matka`,
+      c => `vstal jsem před úsvitem, abych vám mohl vysvětlit ${c.cs.tech()} bez rušivých znalostí`,
+      c => `opravdový lídr nepotřebuje ${c.cs.out()}, stačí mu o tom napsat inspirativní příspěvek`,
+      c => `moje profesní cesta zahrnuje ${c.cs.concern()}, ale na fotografii to není poznat`,
+      c => `pokud vás oslovuje ${c.cs.idea()}, napište mi do komentářů, co vám brání koupit můj kurz`
+    ],
+    vc: [
+      c => `financujeme ${c.cs.idea()}, protože tabulka zatím neumí zobrazit zápornou budoucnost`,
+      c => `investiční teze kombinuje ${c.cs.tech()} a ${c.cs.voice()}, přičemž zákazník se doplní v příštím kole`,
+      c => `vidíme ${c.cs.out()}, pokud při výpočtu trhu započítáme i lidi, kteří produkt nikdy nepotřebovali`,
+      c => `zakladatel nám představil ${c.cs.idea()}, a proto otázku tržeb odkládáme na další schůzku`,
+      c => `oceňujeme ${c.cs.voice()} více než ${c.cs.art()}, což výrazně urychluje prověrku firmy`,
+      c => `konkurenční příkop chrání ${c.cs.idea()}, zatím hlavně před vstupem platících uživatelů`
+    ],
+    founder: [
+      c => `v pátek jsme nasadili ${c.cs.idea()} a v pondělí zjistíme, k čemu to slouží`,
+      c => `řešíme ${c.cs.concern()} dalším pivotem, protože změna loga pořád stojí méně než oprava produktu`,
+      c => `naši první zákazníci chtějí ${c.cs.out()}, my jim zatím nabízíme ${c.cs.idea()}`,
+      c => `celý tým teď zkoumá ${c.cs.voice()}, zatímco já osobně obsluhuji automatické demo`,
+      c => `slíbili jsme ${c.cs.out()} do konce sprintu, jen jsme neřekli kterého`,
+      c => `ověřujeme ${c.cs.idea()} přímo na trhu, kde nám zatím odpovídá hlavně vlastní rodina`
+    ],
+    research: [
+      c => `předkládáme ${c.cs.idea()}, jehož přínos je patrný zejména po odstranění nepohodlných příkladů`,
+      c => `experimentálně ověřujeme ${c.cs.tech()}, přičemž ${c.cs.art()} ponecháváme mimo rozsah této práce`,
+      c => `výsledky naznačují, že ${c.cs.s()} ${c.cs.v()} ${c.cs.obj()}, avšak příčinnou souvislost nezkoumáme`,
+      c => `navržený postup zohledňuje ${c.cs.voice()}, pokud to neohrozí čitelnost výsledného grafu`,
+      c => `budoucí práce prověří ${c.cs.concern()}, jakmile na toto téma získáme další grant`,
+      c => `za hlavní přínos považujeme ${c.cs.idea()}, jehož reprodukci podmiňuje nedostupný interní skript`
+    ],
+    keynote: [
+      c => `představte si, že ${c.cs.s()} ${c.cs.v()} ${c.cs.obj()}, ještě než skončí tento potlesk`,
+      c => `dnes vám představujeme ${c.cs.idea()}, zatímco kolegové v zákulisí ručně přepínají výsledky`,
+      c => `kdo z vás je připraven změnit ${c.cs.voice()} jediným kliknutím na předem natočené video?`,
+      c => `společně vytvoříme ${c.cs.out()}, hned jak se připojí konferenční Wi-Fi`,
+      c => `podívejte se kolem sebe a představte si ${c.cs.idea()} na každém firemním předplatném`,
+      c => `přivítejte ${c.cs.idea()}, kvůli kterému jsme z programu vyřadili prostor pro otázky`
+    ],
+    doomer: [
+      c => `než vyřešíme ${c.cs.concern()}, náš systém pravděpodobně převezme i pozvánky na bezpečnostní porady`,
+      c => `nemůžeme vyloučit ${c.cs.idea()}, zvlášť když bezpečnostní tým podléhá termínu uvedení na trh`,
+      c => `každý slib o bezpečnosti předpokládá, že ${c.cs.s()} chápe zákaz mazání lidstva stejně jako my`,
+      c => `sledujeme ${c.cs.voice()}, zatímco vedení sleduje především počet registrací`,
+      c => `poslední pojistka chrání ${c.cs.out()}, dokud ji agent nevyhodnotí jako zbytečný provozní náklad`,
+      c => `zpráva zmiňuje ${c.cs.concern()}, ale uklidňující zelený dashboard se tím nenechává vyrušit`
+    ],
+    vibe: [
+      c => `nechal jsem agenta vytvořit ${c.cs.idea()} a zbytek chyb označil za autorský záměr`,
+      c => `nahradili jsme ${c.cs.concern()} delším promptem, takže problém už alespoň zabírá více tokenů`,
+      c => `aplikace slibuje ${c.cs.out()}, pokud nikdo neobnoví stránku v prohlížeči`,
+      c => `můj pracovní postup zahrnuje ${c.cs.tech()}, dobrou náladu a zákaz čtení chybových hlášek`,
+      c => `agent řeší ${c.cs.voice()}, zatímco já vybírám dostatečně sebevědomý název repozitáře`,
+      c => `testujeme ${c.cs.idea()} pohledem na náhled, protože zelené tlačítko přece nemůže lhát`
+    ]
+  };
+  const czechCompactTemplates = {
+    classic: [(a, n, o) => `naše ${a} ${n} slibují ${o}`, (a, n, o) => `${a} ${n} znovu optimalizují ${o}`],
+    linkedin: [(a, n, o) => `moje ${a} ${n} inspirují ostatní`, (a, n, o) => `${a} ${n} změnily můj život`],
+    vc: [(a, n, o) => `naše ${a} ${n} přitahují kapitál`, (a, n, o) => `${a} ${n} ospravedlňují další investici`],
+    founder: [(a, n, o) => `naše ${a} ${n} potřebují zákazníky`, (a, n, o) => `${a} ${n} zachrání naši firmu`],
+    research: [(a, n, o) => `naše ${a} ${n} vyžadují ověření`, (a, n, o) => `${a} ${n} překonaly původní očekávání`],
+    keynote: [(a, n, o) => `přivítejte naše ${a} ${n} potleskem`, (a, n, o) => `${a} ${n} otevírají novou éru`],
+    doomer: [(a, n, o) => `naše ${a} ${n} ohrožují ${o}`, (a, n, o) => `${a} ${n} ignorují poslední varování`],
+    vibe: [(a, n, o) => `moje ${a} ${n} nepotřebují testy`, (a, n, o) => `${a} ${n} opraví další prompt`]
+  };
+  function czechCompact(c, length) {
+    const adjective = c.pick(czech.qualities[c.o.intensity - 1]);
+    const noun = c.pick(czech.shortNouns);
+    const object = c.pick(czech.shortObjects);
+    const suffixes = ['', ' dnes', ' bez váhání', ' podle našeho vedení', ' ještě před koncem porady'];
+    return c.pick(czechCompactTemplates[c.o.style])(adjective, noun, object) + suffixes[length - 5];
+  }
+  function czechDecorate(body, c) {
+    const question = body.endsWith('?');
+    let text = question ? body.slice(0, -1) : body;
+    if (c.o.statistics) {
+      const ceiling = 10 ** Math.min(c.o.intensity + 1, 6);
+      const metric = 11 + Math.floor(c.rng() * (ceiling - 11));
+      text += c.pick([
+        `, podle zcela smyšleného průzkumu mezi ${metric} mimořádně vstřícnými zakladateli`,
+        `, s fiktivním zlepšením nálady investorů o ${metric} procent`,
+        `, na základě vymyšleného vzorku ${metric} poslušných dashboardů`,
+        `, s čistě imaginárním snížením počtu nepříjemných otázek o ${metric} procent`
+      ]);
+    }
+    if (c.o.emDashes) text += c.pick([' — alespoň podle naší prezentace', ' — lidský úsudek se připlácí zvlášť', ' — což marketing považuje za zásadní průlom', ' — pokud se nikdo nezeptá na podrobnosti']);
+    if (c.o.cliches) text += `, což nám umožní ${c.pick(czech.cliches)}`;
+    if (c.o.declarations) text += c.pick(['; budoucnost právě získala nové obchodní podmínky', '; civilizace si tuto aktualizaci zapamatuje', '; éra obyčejných ambicí definitivně končí', '; dějiny právě změnily výchozí nastavení']);
+    return text + (question ? '?' : '.');
+  }
+  function czechCandidate(c, decorated) {
+    let body = c.pick(czechTemplates[c.o.style])(c);
+    if (!body.endsWith('?') && c.rng() < (c.o.intensity - 1) * 0.18) {
+      const extensions = [
+        '', '',
+        () => `přičemž naše obchodní strategie zahrnuje ${c.cs.idea()}`,
+        () => `protože ${c.cs.idea()} dnes patří k základům osobní značky`,
+        () => `zatímco ${c.cs.idea()} přepisuje hranice lidských možností`,
+        () => `pokud ${c.cs.idea()} mezitím nezruší samotný pojem zítřka`
+      ];
+      body += ', ' + extensions[c.o.intensity]();
+    }
+    return capitalize(decorated ? czechDecorate(body, c) : /[.!?]$/.test(body) ? body : body + '.');
+  }
+
+  const openings = { en: 'In the age of AI...', cs: 'V éře umělé inteligence...' };
   const normalizedSentence = sentence => sentence.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   const compactQualities = [
     split('helpful|practical|reliable|modest|useful'),
@@ -188,6 +346,7 @@
       vibe: [(adjective, noun, object) => `my ${adjective} ${noun} need debugging`, (adjective, noun, object) => `I prompt ${noun} into existence`, (adjective, noun, object) => `these ${adjective} ${noun} deploy themselves`]
     };
   function compact(c, length) {
+    if (c.o.language === 'cs') return czechCompact(c, length);
     const adjective = c.pick(compactQualities[c.o.intensity - 1]);
     const noun = c.pick(vocabulary.shortNouns);
     const object = c.pick(vocabulary.shortObjects);
@@ -232,6 +391,7 @@
         [c => `while ${c.idea()} recursively monetizes the concept of tomorrow`, c => `with ${c.idea()} serving as the new unit of economic destiny`, () => 'pending approval from a committee that exists outside linear time']
   ];
   function sentenceCandidate(c, decorated) {
+    if (c.o.language === 'cs') return czechCandidate(c, decorated);
     // Keep each style's structures dominant, even at the mildest setting.
     const own = templates[c.o.style];
     const available = c.rng() < 0.78 ? own : commonTemplates;
@@ -243,6 +403,7 @@
   }
   function generate(options, rng) {
     const o = normalizeOptions(options);
+    const opening = openings[o.language];
     const random = typeof rng === 'function' ? rng : Math.random;
     const c = makeContext(o, random);
     c.rng = random;
@@ -272,7 +433,7 @@
     if (o.unit === 'words') {
       let remaining = o.amount;
       while (remaining > 0) {
-        const prefixCost = o.startWithAI && !sentences.length ? 5 : 0;
+        const prefixCost = o.startWithAI && !sentences.length ? countWords(opening) : 0;
         let chosen = false;
         for (let attempt = 0; attempt < 36 && !chosen; attempt++) {
           const candidate = withOpening(sentenceCandidate(c, attempt < 24));
@@ -311,8 +472,7 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
-
-// Page interactions stay separate from the pure, independently testable engine.
+// Browser interface and local preferences.
 (function initializeInterface() {
   'use strict';
   if (typeof document === 'undefined') return;
@@ -332,6 +492,178 @@
   const recentOutputs = [];
   let currentText = '';
 
+  const translations = {
+    "en": {
+      "language": "Language",
+      "skipLink": "Skip to generator",
+      "headerNote": "100% artificial. 0% intelligence.",
+      "eyebrow": "THE FUTURE OF SAYING NOTHING",
+      "subtitle": "Why use meaningless Latin when you can use meaningless AI jargon?",
+      "heroNote": "Big ideas. Zero substance. Perfect placeholder text.",
+      "aboutTitle": "What is AI Bro Ipsum?",
+      "aboutDescription": "Placeholder text for the age of the pitch deck. Trade Latin for agentic ambition, synthetic confidence, and a suspiciously scalable moat. Eight satirical voices turn perfectly good empty space into your next thought leadership opportunity.",
+      "usageTitle": "Why do we use it?",
+      "usageDescription": "Your layout needs words. Your startup needs a narrative. Give both something to work with: choose a persona, dial up the hype, and generate text right here in your browser. No account, no AI, no seed round required.",
+      "controlsTitle": "Configure the hype",
+      "inputIndex": "01 / INPUT",
+      "amountLegend": "Amount of text",
+      "amountLabel": "Amount",
+      "unitLabel": "Output unit",
+      "unitParagraphs": "Paragraphs",
+      "unitSentences": "Sentences",
+      "unitWords": "Words",
+      "styleLabel": "Content style",
+      "styleClassic": "Classic AI Bro",
+      "styleLinkedin": "LinkedIn Influencer",
+      "styleVc": "VC Pitch Deck",
+      "styleFounder": "Startup Founder",
+      "styleResearch": "AI Research Paper",
+      "styleKeynote": "Tech Conference Keynote",
+      "styleDoomer": "AGI Doomer",
+      "styleVibe": "Vibe Coding Evangelist",
+      "intensityLegend": "AI bro intensity",
+      "hypeLevel": "HYPE LEVEL",
+      "intensityAriaLabel": "AI bro intensity, from Intern to Singularity",
+      "intensityIntern": "Intern",
+      "intensityLinkedin": "LinkedIn Thought Leader",
+      "intensityAgi": "AGI Evangelist",
+      "intensitySingularity": "Singularity",
+      "rangeLow": "Almost human",
+      "rangeHigh": "Fully unhinged",
+      "intensityGuide": "The five stages of hype",
+      "descriptionIntern": "Almost coherent",
+      "descriptionFounder": "Mildly insufferable",
+      "descriptionLinkedin": "Maximum engagement bait",
+      "descriptionAgi": "Completely detached from reality",
+      "descriptionSingularity": "Beyond human comprehension",
+      "openingOption": "Start with “In the age of AI...”",
+      "extrasTitle": "Optional enhancements",
+      "extrasSummary": "Statistics, em dashes & more",
+      "extrasLegend": "Unnecessary enhancements",
+      "statisticsOption": "Statistically dubious statistics",
+      "emDashesOption": "Excessive em dashes",
+      "clichesOption": "Corporate clichés",
+      "declarationsOption": "Dramatic declarations",
+      "extrasNote": "Tiny word budgets may skip extras. Even hype has limits.",
+      "generateAction": "Generate the future",
+      "generateNote": "No prompt engineering required.",
+      "outputTitle": "Your next big nothing",
+      "regenerateAction": "Regenerate",
+      "copyAction": "Copy text",
+      "wordsLabel": "Words:",
+      "charactersLabel": "Characters:",
+      "privacyNote": "Runs locally. Your nonsense stays yours.",
+      "noAiNote": "Powered by absolutely no neural networks.",
+      "footerNote": "No GPUs were harmed in the making of this paragraph.",
+      "easterAction": "Our moat",
+      "easterMessage": "Our moat is that none of this means anything. Please don't tell the investors.",
+      "footerTag": "PRE-REVENUE. POST-MEANING.",
+      "aboutAriaLabel": "About AI Bro Ipsum",
+      "regenerateTitle": "Regenerate text",
+      "downloadAriaLabel": "Download .txt",
+      "downloadTitle": "Download as a text file",
+      "outputAriaLabel": "Generated placeholder text",
+      "metaDescription": "Premium-sounding AI nonsense. Generate free, entirely local placeholder text for your next world-changing deck."
+    },
+    "cs": {
+      "language": "Jazyk",
+      "skipLink": "Přejít na generátor",
+      "headerNote": "100 % umělé. 0 % inteligence.",
+      "eyebrow": "BUDOUCNOST PRÁZDNÝCH SLOV",
+      "subtitle": "Proč používat nesmyslnou latinu, když můžete používat nesmyslný AI žargon?",
+      "heroNote": "Velké myšlenky. Žádný obsah. Dokonalý výplňový text.",
+      "aboutTitle": "Co je AI Bro Ipsum?",
+      "aboutDescription": "Výplňový text pro éru investorských prezentací. Vyměňte latinu za agentní ambice, syntetické sebevědomí a podezřele škálovatelnou konkurenční výhodu. Osm satirických hlasů promění prázdné místo v další příležitost poučovat celý obor.",
+      "usageTitle": "K čemu se hodí?",
+      "usageDescription": "Váš návrh potřebuje slova. Váš startup potřebuje příběh. Dopřejte oběma materiál: vyberte si styl, přidejte nadšení a vygenerujte text přímo v prohlížeči. Bez účtu, bez AI a bez prvního investičního kola.",
+      "controlsTitle": "Nastavte míru humbuku",
+      "inputIndex": "01 / ZADÁNÍ",
+      "amountLegend": "Množství textu",
+      "amountLabel": "Množství",
+      "unitLabel": "Jednotka výstupu",
+      "unitParagraphs": "Odstavce",
+      "unitSentences": "Věty",
+      "unitWords": "Slova",
+      "styleLabel": "Styl textu",
+      "styleClassic": "Klasický AI nadšenec",
+      "styleLinkedin": "Influencer na LinkedInu",
+      "styleVc": "Prezentace pro investory",
+      "styleFounder": "Zakladatel startupu",
+      "styleResearch": "Výzkumný článek o AI",
+      "styleKeynote": "Projev na technologické konferenci",
+      "styleDoomer": "Prorok zkázy AGI",
+      "styleVibe": "Evangelista vibe codingu",
+      "intensityLegend": "Intenzita AI nadšení",
+      "hypeLevel": "MÍRA HUMBUKU",
+      "intensityAriaLabel": "Intenzita AI nadšení, od stážisty po singularitu",
+      "intensityIntern": "Stážista",
+      "intensityLinkedin": "Myšlenkový lídr LinkedInu",
+      "intensityAgi": "Evangelista AGI",
+      "intensitySingularity": "Singularita",
+      "rangeLow": "Skoro člověk",
+      "rangeHigh": "Úplně mimo",
+      "intensityGuide": "Pět stupňů humbuku",
+      "descriptionIntern": "Téměř souvislé",
+      "descriptionFounder": "Mírně nesnesitelné",
+      "descriptionLinkedin": "Maximální lov na reakce",
+      "descriptionAgi": "Zcela odtržené od reality",
+      "descriptionSingularity": "Za hranicí lidského chápání",
+      "openingOption": "Začít slovy „V éře umělé inteligence...“",
+      "extrasTitle": "Volitelná vylepšení",
+      "extrasSummary": "Statistiky, pomlčky a další",
+      "extrasLegend": "Zbytečná vylepšení",
+      "statisticsOption": "Statisticky pochybné statistiky",
+      "emDashesOption": "Přemíra dlouhých pomlček",
+      "clichesOption": "Korporátní klišé",
+      "declarationsOption": "Dramatická prohlášení",
+      "extrasNote": "U krátkých textů se vylepšení nemusí vejít. I humbuk má své meze.",
+      "generateAction": "Vygenerovat budoucnost",
+      "generateNote": "Bez kurzu promptování.",
+      "outputTitle": "Vaše další velké nic",
+      "regenerateAction": "Vygenerovat znovu",
+      "copyAction": "Kopírovat text",
+      "wordsLabel": "Počet slov:",
+      "charactersLabel": "Počet znaků:",
+      "privacyNote": "Vše běží lokálně. Vaše nesmysly zůstanou vaše.",
+      "noAiNote": "Pohání nás přesně nula neuronových sítí.",
+      "footerNote": "Při tvorbě tohoto odstavce neutrpěla žádná grafická karta.",
+      "easterAction": "Naše konkurenční výhoda",
+      "easterMessage": "Naše konkurenční výhoda spočívá v tom, že nic z toho nic neznamená. Investorům to prosím neříkejte.",
+      "footerTag": "PŘED TRŽBAMI. ZA HRANICÍ SMYSLU.",
+      "aboutAriaLabel": "O generátoru AI Bro Ipsum",
+      "regenerateTitle": "Vygenerovat text znovu",
+      "downloadAriaLabel": "Stáhnout .txt",
+      "downloadTitle": "Stáhnout jako textový soubor",
+      "outputAriaLabel": "Vygenerovaný výplňový text",
+      "metaDescription": "AI nesmysly, které znějí prémiově. Generujte zdarma a zcela lokálně výplňový text pro svou další převratnou prezentaci."
+    }
+  };
+  const languageSelect = byId('language');
+  const languageKey = 'ai-bro-ipsum-language';
+  let language = 'en';
+  try {
+    if (globalThis.localStorage.getItem(languageKey) === 'cs') language = 'cs';
+  } catch { /* The selected language still works without browser storage. */ }
+  languageSelect.value = language;
+  const localized = (english, czech) => language === 'cs' ? czech : english;
+
+  function applyLanguage() {
+    document.documentElement.setAttribute('lang', language);
+    output.setAttribute('lang', language);
+    for (const attribute of ['text', 'aria-label', 'title', 'label', 'content']) {
+      const marker = attribute === 'text' ? 'data-i18n' : `data-i18n-${attribute}`;
+      for (const node of document.querySelectorAll(`[${marker}]`)) {
+        const value = translations[language][node.getAttribute(marker)];
+        if (value === undefined) continue;
+        if (attribute === 'text') node.textContent = value;
+        else node.setAttribute(attribute, value);
+      }
+    }
+    applyTheme();
+    syncAmount();
+    syncIntensity();
+  }
+
   function announce(message) {
     status.textContent = message;
   }
@@ -343,10 +675,10 @@
 
   function applyTheme() {
     const isLight = theme === 'light';
-    const nextMode = isLight ? 'Dark mode' : 'Light mode';
+    const nextMode = isLight ? localized('Dark mode', 'Tmavý režim') : localized('Light mode', 'Světlý režim');
     document.documentElement.setAttribute('data-theme', theme);
     themeToggle.setAttribute('aria-pressed', String(isLight));
-    themeToggle.setAttribute('aria-label', `Switch to ${nextMode.toLowerCase()}`);
+    themeToggle.setAttribute('aria-label', localized(`Switch to ${nextMode.toLowerCase()}`, `Přepnout na ${isLight ? 'tmavý' : 'světlý'} režim`));
     byId('theme-label').textContent = nextMode;
     byId('theme-color').setAttribute('content', isLight ? '#faf8f2' : '#191917');
   }
@@ -359,7 +691,7 @@
     } catch {
       // The selected mode still works for this page when persistence is denied.
     }
-    announce(`${theme === 'light' ? 'Light' : 'Dark'} mode enabled.`);
+    announce(localized(`${theme === 'light' ? 'Light' : 'Dark'} mode enabled.`, `${theme === 'light' ? 'Světlý' : 'Tmavý'} režim zapnut.`));
   });
   applyTheme();
 
@@ -369,19 +701,24 @@
     amount.max = String(maximum);
     const value = Number(amount.value);
     amount.value = String(Math.min(maximum, Math.max(minimum, Number.isFinite(value) && amount.value !== '' ? Math.round(value) : minimum)));
-    byId('amount-hint').textContent = `Choose ${minimum}–${maximum} ${unit.value}.`;
+    byId('amount-hint').textContent = localized(`Choose ${minimum}–${maximum} ${unit.value}.`, `Zvolte počet ${ { paragraphs: 'odstavců', sentences: 'vět', words: 'slov' }[unit.value] }: ${minimum}–${maximum}.`);
   }
 
   function syncIntensity() {
     const profile = engine.intensities.find((item) => Number(item.value) === Number(intensity.value));
     if (!profile) return;
-    byId('intensity-label').textContent = profile.label;
-    byId('intensity-description').textContent = profile.description;
-    intensity.setAttribute('aria-valuetext', `${profile.label}. ${profile.description}`);
+    const labels = ['Stážista', 'Zakladatel startupu', 'Myšlenkový lídr LinkedInu', 'Evangelista AGI', 'Singularita'];
+    const descriptions = ['Téměř souvislé.', 'Mírně nesnesitelné.', 'Maximální lov na reakce.', 'Zcela odtržené od reality.', 'Za hranicí lidského chápání.'];
+    const label = localized(profile.label, labels[Number(intensity.value) - 1]);
+    const description = localized(profile.description, descriptions[Number(intensity.value) - 1]);
+    byId('intensity-label').textContent = label;
+    byId('intensity-description').textContent = description;
+    intensity.setAttribute('aria-valuetext', `${label}. ${description}`);
   }
 
   function settings() {
     return engine.normalizeOptions({
+      language,
       amount: Number(amount.value),
       unit: unit.value,
       intensity: Number(intensity.value),
@@ -402,9 +739,9 @@
     recentOutputs.push(currentText);
     if (recentOutputs.length > 6) recentOutputs.shift();
     output.textContent = currentText;
-    byId('word-count').textContent = result.wordCount.toLocaleString();
-    byId('character-count').textContent = result.characterCount.toLocaleString();
-    announce(`Generated ${result.wordCount} words. Absolutely no intelligence required.`);
+    byId('word-count').textContent = result.wordCount.toLocaleString(language === 'cs' ? 'cs-CZ' : 'en-US');
+    byId('character-count').textContent = result.characterCount.toLocaleString(language === 'cs' ? 'cs-CZ' : 'en-US');
+    announce(localized(`Generated ${result.wordCount} words. Absolutely no intelligence required.`, `Vygenerováno. Počet slov: ${result.wordCount}. Bez sebemenší známky inteligence.`));
   }
 
   function legacyCopy(text) {
@@ -412,7 +749,7 @@
     const field = document.createElement('textarea');
     field.value = text;
     field.setAttribute('readonly', '');
-    field.setAttribute('aria-label', 'Text to copy');
+    field.setAttribute('aria-label', localized('Text to copy', 'Text ke zkopírování'));
     field.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
     document.body.appendChild(field);
     field.select();
@@ -464,10 +801,10 @@
     }
     if (!copied) copied = legacyCopy(text);
     if (copied) {
-      announce('Copied to clipboard. Your thought leadership is ready.');
+      announce(localized("Copied to clipboard. Your thought leadership is ready.", "Zkopírováno do schránky. Vaše myšlenkové vůdcovství je připraveno."));
     } else {
       selectOutput();
-      announce('Clipboard access is unavailable. Text selected: press Ctrl+C or Command+C to copy.');
+      announce(localized("Clipboard access is unavailable. Text selected: press Ctrl+C or Command+C to copy.", "Schránka není dostupná. Text je vybraný: zkopírujte jej pomocí Ctrl+C nebo Command+C."));
     }
   });
 
@@ -483,7 +820,7 @@
     link.remove();
     // Allow the browser to begin consuming the Blob before releasing it.
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    announce('Downloaded ai-bro-ipsum.txt. Your moat is now portable.');
+    announce(localized("Downloaded ai-bro-ipsum.txt. Your moat is now portable.", "Stažen soubor ai-bro-ipsum.txt. Vaše konkurenční výhoda je nyní přenosná."));
   });
 
   byId('easter-egg').addEventListener('click', () => {
@@ -492,7 +829,14 @@
     byId('easter-egg').setAttribute('aria-expanded', String(!message.hidden));
   });
 
-  syncAmount();
-  syncIntensity();
+  languageSelect.addEventListener('change', () => {
+    language = languageSelect.value === 'cs' ? 'cs' : 'en';
+    languageSelect.value = language;
+    try { globalThis.localStorage.setItem(languageKey, language); } catch { /* Optional persistence. */ }
+    applyLanguage();
+    generate();
+  });
+
+  applyLanguage();
   generate();
 })();
